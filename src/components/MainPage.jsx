@@ -200,9 +200,16 @@ const MainPage = () => {
     }
   }, [tabChange]);
   useEffect(() => {
-    if (window.location.reload()) {
+    const handleBeforeUnload = () => {
       localStorage.removeItem("applicantName");
-    }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    // Cleanup to remove the event listener when the component unmounts
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
   }, []);
   // Handle delete applicant
   const handleDelete = (index) => {
