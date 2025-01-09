@@ -199,8 +199,11 @@ const MainPage = () => {
   });
 
   const handleNext = () => {
-    if (value < applicants.length - 1) {
-      setValue(value + 1); // Go to the next tab
+    if (selectedDocIndex < selectedApplicant.documents.length - 1) {
+      setSelectedDocIndex(selectedDocIndex + 1);
+    } else if (value < applicants.length - 1) {
+      setValue(value + 1);
+      setSelectedDocIndex(0);
     }
   };
 
