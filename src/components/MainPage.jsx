@@ -155,6 +155,7 @@ const MainPage = () => {
   const handleChange = (event, newValue) => {
     console.log(newValue, "newValue");
     setValue(newValue);
+    setSelectedDocIndex(0);
   };
 
   // Handle delete applicant
@@ -403,7 +404,9 @@ const MainPage = () => {
                                   >
                                     <Box>
                                       <Typography>
-                                        {uploadedFile.file.name}
+                                        {uploadedFile.file.name
+                                          ? uploadedFile.file.name
+                                          : "No data "}
                                       </Typography>
                                       <Typography>
                                         {(
