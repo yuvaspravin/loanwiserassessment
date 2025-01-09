@@ -199,6 +199,11 @@ const MainPage = () => {
       setIsUploaded(false);
     }
   }, [tabChange]);
+  useEffect(() => {
+    if (window.location.reload()) {
+      localStorage.removeItem("applicantName");
+    }
+  }, []);
   // Handle delete applicant
   const handleDelete = (index) => {
     const updatedData = applicants.filter((_, i) => i !== index);
