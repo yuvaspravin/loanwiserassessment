@@ -210,10 +210,10 @@ const MainPage = () => {
 
   const handleBack = () => {
     if (value > 0) {
-      setValue(value - 1); // Go to the previous tab
+      setValue(value - 1);
+      setSelectedDocIndex(0);
     }
   };
-
   const selectedApplicant = applicants[value];
   const selectedDocKey = selectedApplicant?.id + "-" + selectedDocIndex;
   const uploadedFile = documentUploads[selectedDocKey];
