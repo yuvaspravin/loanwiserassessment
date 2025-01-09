@@ -63,13 +63,12 @@ const VisuallyHiddenInput = styled("input")({
   width: 1,
 });
 const MainPage = () => {
-  const dispatch = useDispatch();
   const fileInputRef = useRef(null);
   const [isOpen, setIsOpen] = useState(false);
   const [documentOpen, setDocumentOpen] = useState(false);
-  const [applicantName, setApplicantName] = useState(""); // Applicant name
-  const [documentName, setDocumentName] = useState(""); // Document name
-  const [documentFile, setDocumentFile] = useState(null); // Document file (for upload)
+  const [applicantName, setApplicantName] = useState("");
+  const [documentName, setDocumentName] = useState("");
+  const [documentFile, setDocumentFile] = useState(null);
   const [errorName, setErrorName] = useState("");
   const [value, setValue] = useState(0);
   const [applicants, setApplicants] = useState([]);
@@ -78,7 +77,6 @@ const MainPage = () => {
   const [isUploaded, setIsUploaded] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
   const [buttonClickList, setButtonClickList] = useState({});
-  const [tabChange, setTabChange] = useState(false);
   console.log(uploadComplete, "isUploaded");
 
   const addedDocumentName =
@@ -86,7 +84,7 @@ const MainPage = () => {
   const addedDocumentFile =
     buttonClickList && buttonClickList?.upload_document?.size;
   console.log(uploadedFiles, "uploadedFiles");
-  // Fetch data from localStorage
+
   useEffect(() => {
     const existingData =
       JSON.parse(localStorage.getItem("applicantName")) || [];
@@ -105,7 +103,6 @@ const MainPage = () => {
 
   console.log(listview, "dbchbdhb");
 
-  // Update state when adding a new applicant
   const handleFormsubmit = () => {
     if (!applicantName) {
       setErrorName("Enter the applicant name");
@@ -142,9 +139,7 @@ const MainPage = () => {
 
     // Update localStorage
     localStorage.setItem("applicantName", JSON.stringify(updatedApplicants));
-    setApplicants(updatedApplicants); // Update state
-
-    // Clear inputs
+    setApplicants(updatedApplicants);
     setDocumentName("");
     setDocumentFile(null);
     setErrorName("");
@@ -169,7 +164,6 @@ const MainPage = () => {
         lastModified: file.lastModified,
       };
 
-      // Update the specific document's upload_document field
       applicant.documents[documentIndex].upload_document = fileData;
 
       setApplicants(updatedApplicants);
@@ -188,29 +182,11 @@ const MainPage = () => {
     //   }
     // }
     setValue(newValue);
-    setTabChange(true);
-
+    setUploadedFiles([]);
     setUploadComplete(false);
+    setIsUploaded(false);
   };
-  useEffect(() => {
-    if (tabChange) {
-      setUploadedFiles([]);
-      setUploadComplete(false);
-      setIsUploaded(false);
-    }
-  }, [tabChange]);
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      localStorage.removeItem("applicantName");
-    };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    // Cleanup to remove the event listener when the component unmounts
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, []);
   // Handle delete applicant
   const handleDelete = (index) => {
     const updatedData = applicants.filter((_, i) => i !== index);
@@ -224,6 +200,9 @@ const MainPage = () => {
     console.log(list, "dnjcdh");
     setDocButtonView(index);
     setButtonClickList(list);
+    setUploadedFiles([]);
+    setUploadComplete(false);
+    setIsUploaded(false);
   };
 
   const handleFileUpload = (files) => {
@@ -233,9 +212,6 @@ const MainPage = () => {
 
     setIsUploaded(true);
 
-    if (tabChange) {
-      setUploadedFiles([]);
-    }
     console.log("Files uploaded:", fileArray);
   };
 
@@ -249,12 +225,11 @@ const MainPage = () => {
     setUploadComplete(false);
     setIsUploaded(false);
     if (fileInputRef.current) {
-      fileInputRef.current.value = ""; // Reset the file input
+      fileInputRef.current.value = "";
     }
     if (buttonClickList.upload_document?.length > 0) {
       const updatedApplicants = [...applicants];
 
-      // Find the applicant and their corresponding document
       const applicant = updatedApplicants[value];
       console.log(list, "edbhhbe");
 
@@ -262,13 +237,11 @@ const MainPage = () => {
         (doc) => doc.documentName == list.documentName
       );
 
-      // Check if the document name exists
       if (documentIndex !== -1) {
         console.log(updatedApplicants[value], "documentName");
 
         const fileData = {};
 
-        // Update the specific document's upload_document field
         applicant.documents[documentIndex].upload_document = fileData;
 
         setApplicants(updatedApplicants);
@@ -277,8 +250,6 @@ const MainPage = () => {
           JSON.stringify(updatedApplicants)
         );
         setUploadComplete(true);
-
-        // Clear inputs and close the dialog
       }
     }
   };
@@ -291,11 +262,24 @@ const MainPage = () => {
   const handleNext = () => {
     if (docButtonView < applicants[value]?.documents?.length - 1) {
       setDocButtonView((prevIndex) => prevIndex + 1);
+    } else {
+      if (value < applicants.length - 1) {
+        const nextTabIndex = value + 1;
+        handleChange(null, nextTabIndex);
+      }
     }
   };
+
   const handleBack = () => {
     if (docButtonView > 0) {
       setDocButtonView((prevIndex) => prevIndex - 1);
+    } else {
+      if (value > 0) {
+        const prevTabIndex = value - 1;
+        handleChange(null, prevTabIndex);
+
+        setDocButtonView(applicants[prevTabIndex]?.documents?.length - 1);
+      }
     }
   };
 
@@ -413,6 +397,9 @@ const MainPage = () => {
                                 component="label"
                                 startIcon={<AddIcon />}
                                 sx={{ mr: 2 }}
+                                disabled={
+                                  uploadedFiles.length > 0 || uploadComplete
+                                }
                               >
                                 Choose
                                 <VisuallyHiddenInput
@@ -456,7 +443,7 @@ const MainPage = () => {
 
                           <Box sx={{ margin: 2 }}>
                             <Box sx={{ width: "100%", margin: "0 auto" }}>
-                              {!isUploaded ? (
+                              {!isUploaded && uploadedFiles.length == 0 ? (
                                 <Box
                                   {...getRootProps()}
                                   elevation={3}
@@ -469,7 +456,7 @@ const MainPage = () => {
                                   }}
                                 >
                                   {console.log(
-                                    list?.documents[value],
+                                    list?.documents[value] == undefined,
                                     "tesnhfhft"
                                   )}
                                   <input {...getInputProps()} />
@@ -493,6 +480,10 @@ const MainPage = () => {
                                   }}
                                 >
                                   <Box>
+                                    {console.log(
+                                      list?.documents[value] == undefined,
+                                      "tesnhfhft"
+                                    )}
                                     {uploadedFiles.length > 0 ? (
                                       <>
                                         {uploadedFiles.map((file, index) => (
@@ -542,47 +533,51 @@ const MainPage = () => {
                                         ))}
                                       </>
                                     ) : (
-                                      <Box>
-                                        <Typography variant="body1">
-                                          {addedDocumentName}
-                                        </Typography>
-                                        <Box
-                                          sx={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                          }}
-                                        >
-                                          <Typography
-                                            variant="body1"
-                                            color="text.secondary"
-                                          >
-                                            {addedDocumentFile} KB
+                                      uploadComplete && (
+                                        <Box>
+                                          <Typography variant="body1">
+                                            {addedDocumentName}
                                           </Typography>
-                                          <Chip
-                                            label="Completed"
+                                          <Box
                                             sx={{
-                                              backgroundColor: "#22c55e",
-
-                                              color: "#fff",
-                                              ml: 2,
+                                              display: "flex",
+                                              justifyContent: "space-between",
+                                              alignItems: "center",
                                             }}
-                                          />
+                                          >
+                                            <Typography
+                                              variant="body1"
+                                              color="text.secondary"
+                                            >
+                                              {addedDocumentFile} KB
+                                            </Typography>
+                                            <Chip
+                                              label="Completed"
+                                              sx={{
+                                                backgroundColor: "#22c55e",
+
+                                                color: "#fff",
+                                                ml: 2,
+                                              }}
+                                            />
+                                          </Box>
                                         </Box>
-                                      </Box>
+                                      )
                                     )}
                                   </Box>
 
-                                  <IconButton
-                                    onClick={() =>
-                                      resetDropzone(
-                                        list?.documents[docButtonView]
-                                      )
-                                    }
-                                    sx={{ color: "#f97316" }}
-                                  >
-                                    <CloseIcon />
-                                  </IconButton>
+                                  {isUploaded && (
+                                    <IconButton
+                                      onClick={() =>
+                                        resetDropzone(
+                                          list?.documents[docButtonView]
+                                        )
+                                      }
+                                      sx={{ color: "#f97316" }}
+                                    >
+                                      <CloseIcon />
+                                    </IconButton>
+                                  )}
                                 </Box>
                               )}
                             </Box>
