@@ -15,16 +15,18 @@ import {
   Typography,
   useMediaQuery,
 } from "@mui/material";
-import { forwardRef, useCallback, useEffect, useRef, useState } from "react";
-import PropTypes from "prop-types";
 import AddIcon from "@mui/icons-material/Add";
-import DialogPage from "./DialogPage";
-import { useDispatch } from "react-redux";
-
+import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
-import CloseIcon from "@mui/icons-material/Close";
+
+import { forwardRef, useEffect, useRef, useState } from "react";
+
+import PropTypes from "prop-types";
+
 import { useDropzone } from "react-dropzone";
+
+import DialogPage from "./DialogPage";
 
 function CustomTabPanel(props) {
   const { children, value, index, ...other } = props;
@@ -54,17 +56,6 @@ function a11yProps(index) {
     "aria-controls": `simple-tabpanel-${index}`,
   };
 }
-const VisuallyHiddenInput = styled("input")({
-  clip: "rect(0 0 0 0)",
-  clipPath: "inset(50%)",
-  height: 1,
-  overflow: "hidden",
-  position: "absolute",
-  bottom: 0,
-  left: 0,
-  whiteSpace: "nowrap",
-  width: 1,
-});
 
 const Transition_up = forwardRef(function Transition(props, ref) {
   return <Slide direction="up" ref={ref} {...props} />;
@@ -89,37 +80,26 @@ const MainPage = () => {
   const [errorName, setErrorName] = useState("");
   const [value, setValue] = useState(0);
   const [applicants, setApplicants] = useState([]);
-  const [docButtonView, setDocButtonView] = useState(0);
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [isUploaded, setIsUploaded] = useState(false);
-  const [uploadComplete, setUploadComplete] = useState(false);
-  const [buttonClickList, setButtonClickList] = useState({});
-  console.log(uploadComplete, "isUploaded");
+  const [selectedDocIndex, setSelectedDocIndex] = useState(0);
+  const [documentUploads, setDocumentUploads] = useState({});
 
-  const addedDocumentName =
-    buttonClickList && buttonClickList?.upload_document?.name;
-  const addedDocumentFile =
-    buttonClickList && buttonClickList?.upload_document?.size;
-  console.log(uploadedFiles, "uploadedFiles");
-
+  // Load applicants and uploads from localStorage
   useEffect(() => {
-    const existingData =
+    const storedApplicants =
       JSON.parse(localStorage.getItem("applicantName")) || [];
-    setApplicants(existingData);
+    const storedUploads =
+      JSON.parse(localStorage.getItem("documentUploads")) || {};
+    setApplicants(storedApplicants);
+    setDocumentUploads(storedUploads);
   }, []);
+
+  // Save uploads to localStorage on change
   useEffect(() => {
-    if (Object.keys(buttonClickList).length === 0) {
-      let data = applicants[docButtonView]?.documents[0];
-      if (data) {
-        setButtonClickList(data);
-      }
-    }
-  }, [docButtonView, applicants]);
+    localStorage.setItem("documentUploads", JSON.stringify(documentUploads));
+    localStorage.setItem("applicantName", JSON.stringify(applicants));
+  }, [documentUploads, applicants]);
 
-  const listview = applicants.map((e, index) => index == docButtonView);
-
-  console.log(listview, "dbchbdhb");
-
+  // Applicant submit
   const handleFormsubmit = () => {
     if (!applicantName) {
       setErrorName("Enter the applicant name");
@@ -162,46 +142,19 @@ const MainPage = () => {
     setErrorName("");
     setDocumentOpen(false);
   };
-  const handleUploadSubmit = (list) => {
-    const updatedApplicants = [...applicants];
+  const handleUploadSubmit = () => {
+    const applicantId = applicants[value].id;
+    const docKey = `${applicantId}-${selectedDocIndex}`;
 
-    const applicant = updatedApplicants[value];
-
-    const documentIndex = applicant.documents.findIndex(
-      (doc) => doc.documentName == list.documentName
-    );
-
-    if (documentIndex !== -1) {
-      console.log(updatedApplicants[value], "documentName");
-      const file = uploadedFiles[0];
-      const fileData = {
-        name: file.name,
-        size: (file.size / 1024).toFixed(2),
-        type: file.type,
-        lastModified: file.lastModified,
-      };
-
-      applicant.documents[documentIndex].upload_document = fileData;
-
-      setApplicants(updatedApplicants);
-      localStorage.setItem("applicantName", JSON.stringify(updatedApplicants));
-      setUploadComplete(true);
-    } else {
-      alert("Document name does not exist.");
-    }
+    setDocumentUploads((prev) => ({
+      ...prev,
+      [docKey]: { ...prev[docKey], isComplete: true },
+    }));
   };
-
   // Handle tab change
   const handleChange = (event, newValue) => {
-    // if (!uploadComplete) {
-    //   if (uploadedFiles.length > 0) {
-    //     alert("Complete upload");
-    //   }
-    // }
+    console.log(newValue, "newValue");
     setValue(newValue);
-    setUploadedFiles([]);
-    setUploadComplete(false);
-    setIsUploaded(false);
   };
 
   // Handle delete applicant
@@ -211,94 +164,57 @@ const MainPage = () => {
     setApplicants(updatedData);
   };
 
-  // document view
+  const handleDocumentChange = (event, newIndex) => {
+    console.log(newIndex, "hjggfff");
 
-  const documentView = (index, list) => {
-    console.log(list, "dnjcdh");
-    setDocButtonView(index);
-    setButtonClickList(list);
-    setUploadedFiles([]);
-    setUploadComplete(false);
-    setIsUploaded(false);
+    setSelectedDocIndex(newIndex);
   };
 
   const handleFileUpload = (files) => {
-    const fileArray = Array.from(files);
+    const file = files[0];
+    const applicantId = applicants[value].id;
+    const docKey = `${applicantId}-${selectedDocIndex}`;
 
-    setUploadedFiles((prevFiles) => [...prevFiles, ...fileArray]);
-
-    setIsUploaded(true);
-
-    console.log("Files uploaded:", fileArray);
+    setDocumentUploads((prev) => ({
+      ...prev,
+      [docKey]: { file, isComplete: false },
+    }));
   };
 
-  // Drag-and-drop handler
-  const onDrop = useCallback((acceptedFiles) => {
-    handleFileUpload(acceptedFiles);
-  }, []);
+  const handleCancelUpload = () => {
+    const applicantId = applicants[value].id;
+    const docKey = `${applicantId}-${selectedDocIndex}`;
 
-  const resetDropzone = (list) => {
-    setUploadedFiles([]);
-    setUploadComplete(false);
-    setIsUploaded(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-    if (buttonClickList.upload_document?.length > 0) {
-      const updatedApplicants = [...applicants];
-
-      const applicant = updatedApplicants[value];
-      console.log(list, "edbhhbe");
-
-      const documentIndex = applicant.documents.findIndex(
-        (doc) => doc.documentName == list.documentName
-      );
-
-      if (documentIndex !== -1) {
-        console.log(updatedApplicants[value], "documentName");
-
-        const fileData = {};
-
-        applicant.documents[documentIndex].upload_document = fileData;
-
-        setApplicants(updatedApplicants);
-        localStorage.setItem(
-          "applicantName",
-          JSON.stringify(updatedApplicants)
-        );
-        setUploadComplete(true);
-      }
-    }
+    setDocumentUploads((prev) => {
+      const updatedUploads = { ...prev };
+      delete updatedUploads[docKey];
+      return updatedUploads;
+    });
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
+    onDrop: handleFileUpload,
     noClick: true,
   });
 
   const handleNext = () => {
-    if (docButtonView < applicants[value]?.documents?.length - 1) {
-      setDocButtonView((prevIndex) => prevIndex + 1);
-    } else {
-      if (value < applicants.length - 1) {
-        const nextTabIndex = value + 1;
-        handleChange(null, nextTabIndex);
-      }
+    if (value < applicants.length - 1) {
+      setValue(value + 1); // Go to the next tab
     }
   };
 
   const handleBack = () => {
-    if (docButtonView > 0) {
-      setDocButtonView((prevIndex) => prevIndex - 1);
-    } else {
-      if (value > 0) {
-        const prevTabIndex = value - 1;
-        handleChange(null, prevTabIndex);
-
-        setDocButtonView(applicants[prevTabIndex]?.documents?.length - 1);
-      }
+    if (value > 0) {
+      setValue(value - 1); // Go to the previous tab
     }
   };
+
+  const selectedApplicant = applicants[value];
+  const selectedDocKey = selectedApplicant?.id + "-" + selectedDocIndex;
+  const uploadedFile = documentUploads[selectedDocKey];
+
+  console.log(value, selectedApplicant, "selectedApplicant");
 
   return (
     <div style={{ margin: "50px 10px" }}>
@@ -331,6 +247,10 @@ const MainPage = () => {
                 {applicants.map((list, index) => (
                   <Tab
                     key={index}
+                    sx={{
+                      fontSize: "12px",
+                      fontWeight: 600,
+                    }}
                     label={
                       <div style={{ display: "flex", alignItems: "center" }}>
                         <span>{list.name}</span>
@@ -363,43 +283,33 @@ const MainPage = () => {
                         <Box>
                           <Grid container spacing={4}>
                             <Grid item xs={6} sm={6} md={6} lg={6} xl={6}>
-                              {list?.documents?.map((doc, idx) => (
-                                <Button
-                                  key={index}
-                                  variant="contained"
-                                  sx={{
-                                    width: "200px",
-                                    backgroundColor:
-                                      docButtonView == idx
-                                        ? "primary.main"
-                                        : "#FFF",
-                                    color:
-                                      docButtonView == idx
-                                        ? "#fff"
-                                        : "primary.main",
-                                    borderWidth:
-                                      docButtonView === idx ? "none" : "1px",
-                                    borderStyle:
-                                      docButtonView == idx ? "none" : "solid",
-                                    borderColor:
-                                      docButtonView == idx
-                                        ? "none"
-                                        : "primary.main",
-                                    margin: "20px auto",
-                                    mr: 2,
-                                  }}
-                                  onClick={() => documentView(idx, doc)}
-                                >
-                                  {doc?.documentName}
-                                </Button>
-                              ))}
+                              <Box sx={{ display: "flex", width: "100%" }}>
+                                {/* Document Tabs */}
+                                {selectedApplicant && (
+                                  <Tabs
+                                    value={selectedDocIndex}
+                                    onChange={handleDocumentChange}
+                                    orientation="vertical"
+                                  >
+                                    {selectedApplicant.documents.map(
+                                      (doc, index) => (
+                                        <Tab
+                                          key={index}
+                                          label={doc.documentName}
+                                        />
+                                      )
+                                    )}
+                                  </Tabs>
+                                )}
+                              </Box>
                             </Grid>
                           </Grid>
                         </Box>
                       </Grid>
                       <Grid item xs={12} sm={12} md={9} lg={9} xl={9}>
-                        {docButtonView !== null &&
-                          list?.documents[docButtonView] && (
+                        {/* Upload Section */}
+                        {selectedApplicant &&
+                          selectedApplicant.documents[selectedDocIndex] && (
                             <Box
                               sx={{
                                 border: "1px solid #e6e8ec",
@@ -427,20 +337,16 @@ const MainPage = () => {
                                         variant="contained"
                                         component="label"
                                         startIcon={<AddIcon />}
-                                        sx={{ mr: 2 }}
-                                        disabled={
-                                          uploadedFiles.length > 0 ||
-                                          uploadComplete
-                                        }
+                                        disabled={!!uploadedFile}
                                       >
                                         Choose
-                                        <VisuallyHiddenInput
+                                        <input
                                           type="file"
                                           hidden
-                                          onChange={(event) =>
-                                            handleFileUpload(event.target.files)
-                                          }
                                           ref={fileInputRef}
+                                          onChange={(e) =>
+                                            handleFileUpload(e.target.files)
+                                          }
                                         />
                                       </Button>
                                     </Grid>
@@ -454,18 +360,12 @@ const MainPage = () => {
                                     >
                                       <Button
                                         variant="contained"
-                                        component="label"
                                         startIcon={<CloudUploadIcon />}
-                                        sx={{ mr: 2 }}
                                         disabled={
-                                          uploadedFiles.length == 0 ||
-                                          uploadComplete
+                                          !uploadedFile ||
+                                          uploadedFile.isComplete
                                         }
-                                        onClick={() =>
-                                          handleUploadSubmit(
-                                            list?.documents[docButtonView]
-                                          )
-                                        }
+                                        onClick={handleUploadSubmit}
                                       >
                                         Upload
                                       </Button>
@@ -480,14 +380,8 @@ const MainPage = () => {
                                     >
                                       <Button
                                         variant="contained"
-                                        component="label"
                                         startIcon={<CloseIcon />}
-                                        sx={{ mr: 2 }}
-                                        onClick={() =>
-                                          resetDropzone(
-                                            list?.documents[docButtonView]
-                                          )
-                                        }
+                                        onClick={handleCancelUpload}
                                       >
                                         Cancel
                                       </Button>
@@ -495,154 +389,69 @@ const MainPage = () => {
                                   </Grid>
                                 </Box>
                               </Box>
-
                               <Box sx={{ margin: 2 }}>
-                                <Box sx={{ width: "100%", margin: "0 auto" }}>
-                                  {!isUploaded && uploadedFiles.length == 0 ? (
-                                    <Box
-                                      {...getRootProps()}
-                                      elevation={3}
-                                      sx={{
-                                        cursor: "pointer",
-                                        height: 100,
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "flex-start",
-                                      }}
-                                    >
-                                      {console.log(
-                                        list?.documents[value] == undefined,
-                                        "tesnhfhft"
-                                      )}
-                                      <input {...getInputProps()} />
-                                      {isDragActive ? (
-                                        <Typography variant="body1">
-                                          Drop the files here...
-                                        </Typography>
-                                      ) : (
-                                        <Typography variant="body1">
-                                          Drag and drop files here
-                                        </Typography>
-                                      )}
+                                {uploadedFile && (
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      justifyContent: "space-between",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    <Box>
+                                      <Typography>
+                                        {uploadedFile.file.name}
+                                      </Typography>
+                                      <Typography>
+                                        {(
+                                          uploadedFile.file.size / 1024
+                                        ).toFixed(2)}{" "}
+                                        KB
+                                      </Typography>
+                                      <Chip
+                                        label={
+                                          uploadedFile.isComplete
+                                            ? "Completed"
+                                            : "Pending"
+                                        }
+                                        sx={{
+                                          backgroundColor:
+                                            uploadedFile.isComplete
+                                              ? "#22c55e"
+                                              : "#f97316",
+                                          color: "#fff",
+                                        }}
+                                      />
                                     </Box>
-                                  ) : (
-                                    <Box
-                                      sx={{
-                                        display: "flex",
-                                        justifyContent: "space-between",
-                                        alignItems: "center",
-                                        flexDirection: "row",
-                                      }}
-                                    >
-                                      <Box>
-                                        {console.log(
-                                          list?.documents[value] == undefined,
-                                          "tesnhfhft"
-                                        )}
-                                        {uploadedFiles.length > 0 ? (
-                                          <>
-                                            {uploadedFiles.map(
-                                              (file, index) => (
-                                                <Box
-                                                  key={index}
-                                                  sx={{
-                                                    display: "flex",
-                                                    alignItems: "flex-start",
-                                                    justifyContent:
-                                                      "flex-start",
-                                                    flexDirection: "column",
-                                                  }}
-                                                >
-                                                  <Typography variant="body1">
-                                                    {file.name}
-                                                  </Typography>
-                                                  <Box
-                                                    sx={{
-                                                      display: "flex",
-                                                      justifyContent:
-                                                        "space-between",
-                                                      alignItems: "center",
-                                                    }}
-                                                  >
-                                                    <Typography
-                                                      variant="body1"
-                                                      color="text.secondary"
-                                                    >
-                                                      {(
-                                                        file.size / 1024
-                                                      ).toFixed(2)}{" "}
-                                                      KB
-                                                    </Typography>
-                                                    <Chip
-                                                      label={
-                                                        uploadComplete
-                                                          ? "Completed"
-                                                          : "Pending"
-                                                      }
-                                                      sx={{
-                                                        backgroundColor:
-                                                          uploadComplete
-                                                            ? "#22c55e"
-                                                            : "#f97316",
-                                                        color: "#fff",
-                                                        ml: 2,
-                                                      }}
-                                                    />
-                                                  </Box>
-                                                </Box>
-                                              )
-                                            )}
-                                          </>
-                                        ) : (
-                                          uploadComplete && (
-                                            <Box>
-                                              <Typography variant="body1">
-                                                {addedDocumentName}
-                                              </Typography>
-                                              <Box
-                                                sx={{
-                                                  display: "flex",
-                                                  justifyContent:
-                                                    "space-between",
-                                                  alignItems: "center",
-                                                }}
-                                              >
-                                                <Typography
-                                                  variant="body1"
-                                                  color="text.secondary"
-                                                >
-                                                  {addedDocumentFile} KB
-                                                </Typography>
-                                                <Chip
-                                                  label="Completed"
-                                                  sx={{
-                                                    backgroundColor: "#22c55e",
-
-                                                    color: "#fff",
-                                                    ml: 2,
-                                                  }}
-                                                />
-                                              </Box>
-                                            </Box>
-                                          )
-                                        )}
-                                      </Box>
-
-                                      {isUploaded && (
-                                        <IconButton
-                                          onClick={() =>
-                                            resetDropzone(
-                                              list?.documents[docButtonView]
-                                            )
-                                          }
-                                          sx={{ color: "#f97316" }}
-                                        >
-                                          <CloseIcon />
-                                        </IconButton>
-                                      )}
+                                    <Box>
+                                      <IconButton
+                                        onClick={handleCancelUpload}
+                                        sx={{ color: "#f97316" }}
+                                      >
+                                        <CloseIcon />
+                                      </IconButton>
                                     </Box>
-                                  )}
-                                </Box>
+                                  </Box>
+                                )}
+                                {!uploadedFile && (
+                                  <Box
+                                    {...getRootProps()}
+                                    sx={{
+                                      cursor: "pointer",
+                                      height: 100,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "flex-start",
+                                    }}
+                                  >
+                                    <input {...getInputProps()} />
+                                    <Typography>
+                                      {isDragActive
+                                        ? "Drop files here..."
+                                        : "Drag and drop files here"}
+                                    </Typography>
+                                  </Box>
+                                )}
                               </Box>
                             </Box>
                           )}
