@@ -209,11 +209,18 @@ const MainPage = () => {
   };
 
   const handleBack = () => {
-    if (value > 0) {
-      setValue(value - 1);
-      setSelectedDocIndex(0);
+    if (selectedDocIndex > 0) {
+      setSelectedDocIndex(selectedDocIndex - 1);
+    } else if (value > 0) {
+      const previousApplicantIndex = value - 1;
+      const lastDocumentIndex =
+        applicants[previousApplicantIndex].documents.length - 1;
+
+      setValue(previousApplicantIndex);
+      setSelectedDocIndex(lastDocumentIndex);
     }
   };
+
   const selectedApplicant = applicants[value];
   const selectedDocKey = selectedApplicant?.id + "-" + selectedDocIndex;
   const uploadedFile = documentUploads[selectedDocKey];
