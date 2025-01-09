@@ -78,13 +78,14 @@ const MainPage = () => {
   const [isUploaded, setIsUploaded] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
   const [buttonClickList, setButtonClickList] = useState({});
+  const [tabChange, setTabChange] = useState(false);
   console.log(uploadComplete, "isUploaded");
 
   const addedDocumentName =
     buttonClickList && buttonClickList?.upload_document?.name;
   const addedDocumentFile =
     buttonClickList && buttonClickList?.upload_document?.size;
-  console.log(addedDocumentName, "uploadedFiles");
+  console.log(uploadedFiles, "uploadedFiles");
   // Fetch data from localStorage
   useEffect(() => {
     const existingData =
@@ -147,19 +148,17 @@ const MainPage = () => {
     setDocumentName("");
     setDocumentFile(null);
     setErrorName("");
-    setDocumentOpen(false); // Close dialog
+    setDocumentOpen(false);
   };
   const handleUploadSubmit = (list) => {
     const updatedApplicants = [...applicants];
 
-    // Find the applicant and their corresponding document
     const applicant = updatedApplicants[value];
 
     const documentIndex = applicant.documents.findIndex(
       (doc) => doc.documentName == list.documentName
     );
 
-    // Check if the document name exists
     if (documentIndex !== -1) {
       console.log(updatedApplicants[value], "documentName");
       const file = uploadedFiles[0];
@@ -176,19 +175,30 @@ const MainPage = () => {
       setApplicants(updatedApplicants);
       localStorage.setItem("applicantName", JSON.stringify(updatedApplicants));
       setUploadComplete(true);
-
-      // Clear inputs and close the dialog
     } else {
-      // Handle case where document name doesn't match (optional)
       alert("Document name does not exist.");
     }
   };
 
   // Handle tab change
   const handleChange = (event, newValue) => {
+    // if (!uploadComplete) {
+    //   if (uploadedFiles.length > 0) {
+    //     alert("Complete upload");
+    //   }
+    // }
     setValue(newValue);
-  };
+    setTabChange(true);
 
+    setUploadComplete(false);
+  };
+  useEffect(() => {
+    if (tabChange) {
+      setUploadedFiles([]);
+      setUploadComplete(false);
+      setIsUploaded(false);
+    }
+  }, [tabChange]);
   // Handle delete applicant
   const handleDelete = (index) => {
     const updatedData = applicants.filter((_, i) => i !== index);
@@ -204,18 +214,18 @@ const MainPage = () => {
     setButtonClickList(list);
   };
 
-  const handleFileUpload = useCallback((files) => {
-    console.log(files, "dfff");
-    const fileArray = Array.from(files); // Convert FileList to an array
+  const handleFileUpload = (files) => {
+    const fileArray = Array.from(files);
 
-    // Append the new files to the existing files (if any) instead of replacing them
     setUploadedFiles((prevFiles) => [...prevFiles, ...fileArray]);
 
-    // Set the upload state to true after files are added (you can change this logic based on your needs)
-    setIsUploaded(true); // Change this to true after upload completion if you want
+    setIsUploaded(true);
 
+    if (tabChange) {
+      setUploadedFiles([]);
+    }
     console.log("Files uploaded:", fileArray);
-  }, []);
+  };
 
   // Drag-and-drop handler
   const onDrop = useCallback((acceptedFiles) => {
@@ -333,7 +343,6 @@ const MainPage = () => {
                 {list?.documents?.length === 0 ? (
                   <Box>
                     {" "}
-                    {console.log(list, "testddd")}
                     <Typography>No documents available</Typography>
                   </Box>
                 ) : (
@@ -392,7 +401,6 @@ const MainPage = () => {
                                 component="label"
                                 startIcon={<AddIcon />}
                                 sx={{ mr: 2 }}
-                                disabled={uploadedFiles.length > 0}
                               >
                                 Choose
                                 <VisuallyHiddenInput
@@ -425,7 +433,6 @@ const MainPage = () => {
                                 component="label"
                                 startIcon={<CloseIcon />}
                                 sx={{ mr: 2 }}
-                                disabled={uploadedFiles.length == 0}
                                 onClick={() =>
                                   resetDropzone(list?.documents[docButtonView])
                                 }
@@ -437,8 +444,7 @@ const MainPage = () => {
 
                           <Box sx={{ margin: 2 }}>
                             <Box sx={{ width: "100%", margin: "0 auto" }}>
-                              {(!isUploaded && uploadedFiles.length == 0) ||
-                              list?.documents[value] == undefined ? (
+                              {!isUploaded ? (
                                 <Box
                                   {...getRootProps()}
                                   elevation={3}
@@ -450,6 +456,10 @@ const MainPage = () => {
                                     justifyContent: "flex-start",
                                   }}
                                 >
+                                  {console.log(
+                                    list?.documents[value],
+                                    "tesnhfhft"
+                                  )}
                                   <input {...getInputProps()} />
                                   {isDragActive ? (
                                     <Typography variant="body1">
@@ -470,103 +480,97 @@ const MainPage = () => {
                                     flexDirection: "row",
                                   }}
                                 >
-                                  {list?.documents[value] !== undefined && (
-                                    <Box>
-                                      {uploadedFiles.length > 0 ? (
-                                        <>
-                                          {uploadedFiles.map((file, index) => (
-                                            <Box
-                                              key={index}
-                                              sx={{
-                                                display: "flex",
-                                                alignItems: "flex-start",
-                                                justifyContent: "flex-start",
-                                                flexDirection: "column",
-                                              }}
-                                            >
-                                              <Typography variant="body1">
-                                                {file.name}
-                                              </Typography>
-                                              <Box
-                                                sx={{
-                                                  display: "flex",
-                                                  justifyContent:
-                                                    "space-between",
-                                                  alignItems: "center",
-                                                }}
-                                              >
-                                                <Typography
-                                                  variant="body1"
-                                                  color="text.secondary"
-                                                >
-                                                  {(file.size / 1024).toFixed(
-                                                    2
-                                                  )}{" "}
-                                                  KB
-                                                </Typography>
-                                                <Chip
-                                                  label={
-                                                    uploadComplete
-                                                      ? "Completed"
-                                                      : "Pending"
-                                                  }
-                                                  sx={{
-                                                    backgroundColor:
-                                                      uploadComplete
-                                                        ? "#22c55e"
-                                                        : "#f97316",
-                                                    color: "#fff",
-                                                    ml: 2,
-                                                  }}
-                                                />
-                                              </Box>
-                                            </Box>
-                                          ))}
-                                        </>
-                                      ) : (
-                                        <Box>
-                                          <Typography variant="body1">
-                                            {addedDocumentName}
-                                          </Typography>
+                                  <Box>
+                                    {uploadedFiles.length > 0 ? (
+                                      <>
+                                        {uploadedFiles.map((file, index) => (
                                           <Box
+                                            key={index}
                                             sx={{
                                               display: "flex",
-                                              justifyContent: "space-between",
-                                              alignItems: "center",
+                                              alignItems: "flex-start",
+                                              justifyContent: "flex-start",
+                                              flexDirection: "column",
                                             }}
                                           >
-                                            <Typography
-                                              variant="body1"
-                                              color="text.secondary"
-                                            >
-                                              {addedDocumentFile} KB
+                                            <Typography variant="body1">
+                                              {file.name}
                                             </Typography>
-                                            <Chip
-                                              label="Completed"
+                                            <Box
                                               sx={{
-                                                backgroundColor: "#22c55e",
-
-                                                color: "#fff",
-                                                ml: 2,
+                                                display: "flex",
+                                                justifyContent: "space-between",
+                                                alignItems: "center",
                                               }}
-                                            />
+                                            >
+                                              <Typography
+                                                variant="body1"
+                                                color="text.secondary"
+                                              >
+                                                {(file.size / 1024).toFixed(2)}{" "}
+                                                KB
+                                              </Typography>
+                                              <Chip
+                                                label={
+                                                  uploadComplete
+                                                    ? "Completed"
+                                                    : "Pending"
+                                                }
+                                                sx={{
+                                                  backgroundColor:
+                                                    uploadComplete
+                                                      ? "#22c55e"
+                                                      : "#f97316",
+                                                  color: "#fff",
+                                                  ml: 2,
+                                                }}
+                                              />
+                                            </Box>
                                           </Box>
+                                        ))}
+                                      </>
+                                    ) : (
+                                      <Box>
+                                        <Typography variant="body1">
+                                          {addedDocumentName}
+                                        </Typography>
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          <Typography
+                                            variant="body1"
+                                            color="text.secondary"
+                                          >
+                                            {addedDocumentFile} KB
+                                          </Typography>
+                                          <Chip
+                                            label="Completed"
+                                            sx={{
+                                              backgroundColor: "#22c55e",
+
+                                              color: "#fff",
+                                              ml: 2,
+                                            }}
+                                          />
                                         </Box>
-                                      )}
-                                    </Box>
-                                  )}
-                                  {list?.documents[value] !== undefined && (
-                                    <IconButton
-                                      onClick={() =>
-                                        resetDropzone(
-                                          list?.documents[docButtonView]
-                                        )
-                                      }
-                                      sx={{ color: "#f97316" }}
-                                    >
-                                      <CloseIcon />
-                                    </IconButton>
-                                  )}
+                                      </Box>
+                                    )}
+                                  </Box>
+
+                                  <IconButton
+                                    onClick={() =>
+                                      resetDropzone(
+                                        list?.documents[docButtonView]
+                                      )
+                                    }
+                                    sx={{ color: "#f97316" }}
+                                  >
+                                    <CloseIcon />
+                                  </IconButton>
                                 </Box>
                               )}
                             </Box>
